@@ -20,14 +20,13 @@ PubSubClient mqttClient(wifiClient);
 // constants
 const char *M_MQTT::_aliveTemplate = mqttAliveTemplate;
 
-
 bool M_MQTT::makeTopic(char *topic, const char *prefix) {
-    size_t n = strlcpy(topic, prefix, mqttTopicSize);
-    if (n >= mqttTopicSize) {
+    size_t n = strlcpy(topic, prefix, _topicSize);
+    if (n >= _topicSize) {
         Log.fatalln("MQTT prefix too long for topic: %s", prefix);
         return false;
     }
-    size_t left = mqttTopicSize - n;
+    size_t left = _topicSize - n;
     if (strlcpy(topic + n, _id, left) >= left) {
         Log.fatalln("MQTT prefix too long for topic: %s", prefix);
         return false;
@@ -38,14 +37,14 @@ bool M_MQTT::makeTopic(char *topic, const char *prefix) {
 bool M_MQTT::setup(const char *host, const uint16_t port) {
     bool ret = true;
 
-    if (strlcpy(_id, WiFi.getHostname(), mqttIDSize) >= mqttIDSize) {
+    if (strlcpy(_id, WiFi.getHostname(), _idSize) >= _idSize) {
         Log.fatalln("MQTT ID too big");
         return false;
     }
-    ret &= makeTopic(_topics[HEALTH], mqttHealthTopic);
-    ret &= makeTopic(_topics[LOG], mqttLogTopic);
-    ret &= makeTopic(_topics[CMD], mqttCmdTopic);
-    ret &= makeTopic(_topics[DATA], mqttDataTopic);
+    ret &= makeTopic(_topics[T_HEALTH], mqttHealthTopic);
+    ret &= makeTopic(_topics[T_LOG], mqttLogTopic);
+    ret &= makeTopic(_topics[T_CMD], mqttCmdTopic);
+    ret &= makeTopic(_topics[T_DATA], mqttDataTopic);
     Log.verboseln("Setting mqq host %s and port %d", host, port);
     mqttClient.setServer(host, port);
     mqttClient.setCallback(mqttCallback);
@@ -56,20 +55,18 @@ bool M_MQTT::check(void) {
     uint8_t count = 0;
 
     while (!mqttClient.connected()) {
-        if (mqttClient.connect(_id, _topics[HEALTH], 0, false,
+        if (mqttClient.connect(_id, _topics[T_HEALTH], 0, false,
                                "Disconnected")) {
-            char msg[mqttMessageSize];
-            snprintf(msg, mqttMessageSize, _aliveTemplate,
+            char msg[_messageSize];
+            snprintf(msg, _messageSize, _aliveTemplate,
                      localIP.toString().c_str());
-            mqttClient.publish(_topics[HEALTH], msg);
-            mqttClient.subscribe(_topics[CMD]);
-            // Need to setup log engine to switch to mqtt or use both
+            send(T_HEALTH, msg);
+            mqttClient.subscribe(_topics[T_CMD]);
             ready = true;
-            Log.noticeln("MQTT connnected");
             break;
         } else {
             ready = false;
-            if (++count > mqttMaxConnects) {
+            if (++count > _maxAttempts) {
                 Log.errorln("MQTT connection failed");
                 return false;
             }
@@ -89,3 +86,60 @@ bool M_MQTT::loop(void) {
     }
     return true;
 }
+
+void M_MQTT::send(TopicName topic, const char *msg) {
+    if (mqttClient.connected()) {
+        mqttClient.publish(_topics[topic], msg);
+    }
+}
+
+void M_MQTT::sendf(TopicName topic, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    vsnprintf(_reply, _replySize, format, args);
+    va_end(args);
+    send(topic, _reply);
+}
+
+void LogPrint::setPrint(Print &print) {
+    _print = &print;
+    _usePrint = true;
+}
+
+void LogPrint::setMQTT(M_MQTT &mqtt, M_MQTT::TopicName topic) {
+    _mqtt = &mqtt;
+    _topic = topic;
+    _useMQTT = true;
+}
+
+size_t LogPrint::write(uint8_t byte) {
+    uint8_t wrap = '\0';
+
+    switch (byte) {
+        case '\0':
+        case '\r':
+            return 1;
+        case '\n':
+            byte = '\0';
+            break;
+        default:;
+    }
+    if ((_bufferPos + 1) == _bufferSize) {
+        // if we will overflow send what we have
+        // and continue from the beginning
+        wrap = byte;
+        byte = '\0';
+    }
+    _buffer[_bufferPos++] = byte;
+    if (byte == '\0') {
+        if (_usePrint) _print->println(_buffer);
+        if (_useMQTT) _mqtt->send(_topic, _buffer);
+        _bufferPos = 0;
+    }
+    if (wrap) {
+        _buffer[_bufferPos++] = wrap;
+    }
+    return 1;
+}
+
+int LogPrint::availableForWrite() { return _bufferSize - _bufferPos; }

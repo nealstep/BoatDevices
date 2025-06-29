@@ -8,3 +8,6 @@ constexpr const char *mqttCmdTopic = "/devices/cmd/";
 
 // mqtt alive template
 constexpr const char *mqttAliveTemplate = "alive %s";
+
+// mqtt messages
+constexpr const char *mqttWait = "Wait still processing last command";

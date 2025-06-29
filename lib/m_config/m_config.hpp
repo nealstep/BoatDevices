@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ArduinoJson.h>
-
 #include "all.hpp"
+
+#include <ArduinoJson.h>
 
 class M_Config {
    public:
@@ -10,14 +10,17 @@ class M_Config {
 
    private:
     static const uint8_t _badItem = 255;
-    static const char _defaultFilename[filenameSize];
+    static const uint8_t _filenameSize = smallBufferSize;
+    static const uint8_t _nameSize = tinyBufferSize;
+    static const uint8_t _items = configItems;
+    static const char _defaultFilename[_filenameSize];
     union DataTypes {
         char *chars;
         uint16_t u16;
         int16_t i16;
     };
     struct DataPair {
-        char name[configNameSize];
+        char name[_nameSize];
         DataTypeCodes type;
         uint8_t size;
         DataTypes datum;
@@ -49,8 +52,8 @@ class M_Config {
     bool set(const char *name, const int16_t &datum);
 
    private:
-    char _filename[filenameSize];
-    DataPair _config[configItems];
+    char _filename[_filenameSize];
+    DataPair _config[_items];
     uint8_t _configCount = 0;
     DeserializationError _dError;
 };

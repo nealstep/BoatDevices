@@ -2,15 +2,15 @@
 
 extern bool reconnect;
 
-static char _ssid[wifiStringSize];
-static char _passwd[wifiStringSize];
+static char _ssid[M_WiFi::stringSize];
+static char _passwd[M_WiFi::stringSize];
 
 bool M_WiFi::copyStrings(const char *wifiSSID, const char *wifiPasswd) {
-    if (strlcpy(_ssid, wifiSSID, wifiStringSize) >= wifiStringSize) {
+    if (strlcpy(_ssid, wifiSSID, stringSize) >= stringSize) {
         Log.fatal("WiFi init unable to copy SSID: %s", wifiSSID);
         return false;
     }
-    if (strlcpy(_passwd, wifiPasswd, wifiStringSize) >= wifiStringSize) {
+    if (strlcpy(_passwd, wifiPasswd, stringSize) >= stringSize) {
         Log.fatal("WiFi init unable to copy passwd");
         return false;
     }

@@ -12,10 +12,12 @@
 
 class M_WiFi {
    private:
-    const uint16_t _connectDelay = 500;
-    const uint8_t _maxAttempts = wifiMaxAttempts;
+    static const uint16_t _connectDelay = 500;
+    static const uint8_t _maxAttempts = maxAttempts;
 
    public:
+    static const uint8_t stringSize = smallBufferSize;
+
     bool init(const char *wifi_ssid, const char *wifi_passwd);
     bool connected(void);
 

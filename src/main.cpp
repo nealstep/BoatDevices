@@ -12,6 +12,10 @@ StreamCmd streamCmd;
 M_Config config;
 M_MQTT mqtt;
 M_WiFi wifi;
+LogPrint logPrint;
+
+// constants
+const uint8_t mqttCmdSize = mediumBufferSize;
 
 // global variables
 IPAddress localIP;
@@ -20,6 +24,9 @@ uint32_t previousMillis;
 uint32_t seconds;
 bool ledStatus = false;
 bool reconnect = false;
+uint32_t mqttLastCheck = 0;
+bool mqttCmdRdy = false;
+char mqttCmd[mqttCmdSize];
 
 // task globals
 bool blinkDone = false;
@@ -52,10 +59,11 @@ void configSetup(void) {
 // setup
 void setup() {
     Serial.begin(baud);
-    Log.begin(LOG_LEVEL_VERBOSE, &Serial, true);
+    logPrint.setPrint(Serial);
+    Log.begin(LOG_LEVEL_VERBOSE, &logPrint, true);
     streamCmd.setStream(Serial);
     // settling time
-    delay(delayLong);
+    delay(longDelay);
     Log.traceln("Starting");
     // blink setup
     pinMode(LED_BUILTIN, OUTPUT);
@@ -79,7 +87,10 @@ void setup() {
         config.get("mqtt_host", host);
         config.get("mqtt_port", port);
         if (mqtt.setup(host, port)) {
-            if (!mqtt.check()) {
+            if (mqtt.check()) {
+                logPrint.setMQTT(mqtt, mqtt.T_LOG);
+                Log.noticeln("MQTT connnected");
+            } else {
                 Log.fatalln("MQTT check failed");
             }
         } else {
@@ -94,17 +105,17 @@ void setup() {
     } else {
         Log.error("issue with wifi %T and/or mqtt %T, stopping",
                   wifi.connected(), mqtt.ready);
-        while (true) delay(delayLong);
+        while (true) delay(longDelay);
     }
 }
 
 void blink(void) {
-    Log.verboseln("blink");
+    // Log.verboseln("blink");
     ledStatus = !ledStatus;
     digitalWrite(LED_BUILTIN, ledStatus);
 }
 
-bool cmdHandle(const char *cmd) {
+bool cmdHandle(const char *cmd, bool useMQTT = false) {
     bool ret = true;
     uint8_t len = strlen(cmd);
 
@@ -116,6 +127,9 @@ bool cmdHandle(const char *cmd) {
             //     break;
             default:
                 Log.warningln("Unknown cmd: %s", cmd);
+                if (useMQTT) {
+                    mqtt.sendf(mqtt.T_CMD, "* Unknown cmd: %s", cmd);
+                }
                 ret = false;
         }
     } else {
@@ -125,16 +139,35 @@ bool cmdHandle(const char *cmd) {
 }
 
 void mqttCallback(char *topic, byte *payload, unsigned int length) {
-    Log.warningln("mqttCallback Not Implemented");
-    Log.verboseln("callback on topic %s size %d payload: %s", topic, length,
-                  payload);
+    if ((length > 0) && (payload[0] == '*')) {
+        // ignore our traffic
+        return;
+    }
+    if (mqttCmdRdy) {
+        Log.warningln("Command arrived while still processing last command");
+        mqtt.send(mqtt.T_CMD, mqttWait);
+        return;
+    }
+    if (length < mqttCmdSize) {
+        memcpy(mqttCmd, payload, length);
+        mqttCmd[length] = '\0';
+        Log.verboseln("callback on topic %s size %d data: %s", topic, length,
+                      mqttCmd);
+        mqttCmdRdy = true;
+    } else {
+        Log.errorln("mqttCallback topix %s payload too large: %d", topic,
+                    length);
+    }
 }
 
 void loop() {
     // check for a reconnect
-    if (reconnect == true) {
+    if ((reconnect == true) && (wifi.connected()) &&
+        ((seconds - mqttLastCheck) > mqttObsessTime)) {
+        Log.warning("Reconnect");
         mqtt.check();
         reconnect = false;
+        mqttLastCheck = seconds;
     }
     // check ota
     ArduinoOTA.handle();
@@ -144,9 +177,14 @@ void loop() {
     if (streamCmd.loop()) {
         cmdHandle(streamCmd.get());
     }
+    // check mqtt command
+    if (mqttCmdRdy) {
+        cmdHandle(mqttCmd, true);
+        mqttCmdRdy = false;
+    }
     // count delayLongs (seconds)
     currentMillis = millis();
-    if (currentMillis - previousMillis >= second) {
+    if (currentMillis - previousMillis >= millis_in_second) {
         seconds++;
         previousMillis = currentMillis;
         // reset dones
@@ -161,7 +199,7 @@ void loop() {
     }
     if ((seconds % mqttCheckTime) == mqttCheckTimeOffset) {
         if (!mqttDone) {
-            Log.verboseln("MQTT Check Time");
+            // Log.verboseln("MQTT Check Time");
             mqtt.check();
             mqttDone = true;
         }

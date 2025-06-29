@@ -2,11 +2,11 @@
 
 #include <LittleFS.h>
 
-const char M_Config::_defaultFilename[filenameSize] = "/config.json";
+const char M_Config::_defaultFilename[_filenameSize] = "/config.json";
 
 M_Config::M_Config(const char *filename) {
     Log.traceln("M_Config init");
-    if (strlcpy(_filename, filename, filenameSize) >= filenameSize) {
+    if (strlcpy(_filename, filename, _filenameSize) >= _filenameSize) {
         Log.errorln("Config setup filename copy failed for: %s", filename);
     }
 }
@@ -139,7 +139,7 @@ uint8_t M_Config::find(const char *name, DataTypeCodes type) {
 
     // Log.traceln("M_Config::find");
     for (uint8_t i = 0; i < _configCount; i++) {
-        if (strncmp(_config[i].name, name, configNameSize) == 0) {
+        if (strncmp(_config[i].name, name, _nameSize) == 0) {
             found = true;
             if (type != ANY) {
                 if (_config[i].type != type) {
@@ -167,12 +167,12 @@ bool M_Config::add(const char *name, DataTypeCodes type, uint8_t size) {
         Log.warning("Config add name already exists: %s", name);
         return false;
     }
-    if (_configCount >= configItems) {
+    if (_configCount >= _items) {
         Log.errorln("Config add full while adding %s", name);
         return false;
     }
     item = _configCount;
-    if (strlcpy(_config[item].name, name, configNameSize) >= configNameSize) {
+    if (strlcpy(_config[item].name, name, _nameSize) >= _nameSize) {
         Log.warning("Config add name too long max: %s", name);
         return false;
     }
@@ -191,7 +191,7 @@ bool M_Config::add(const char *name, DataTypeCodes type, uint8_t size) {
 
 M_Config::DataTypeCodes M_Config::getType(uint8_t item) {
     // Log.traceln("M_Config::getType item");
-    if (item >= configItems) return ANY;
+    if (item >= _items) return ANY;
     return _config[item].type;
 }
 
@@ -205,21 +205,21 @@ M_Config::DataTypeCodes M_Config::getType(const char *name) {
 
 bool M_Config::get(uint8_t item, const char *&datum) {
     // Log.traceln("M_Config::get chars item");
-    if (item >= configItems) return false;
+    if (item >= _items) return false;
     datum = _config[item].datum.chars;
     return true;
 }
 
 bool M_Config::get(uint8_t item, uint16_t &datum) {
     // Log.traceln("M_Config::get u16 item");
-    if (item >= configItems) return false;
+    if (item >= _items) return false;
     datum = _config[item].datum.u16;
     return true;
 }
 
 bool M_Config::get(uint8_t item, int16_t &datum) {
     // Log.traceln("M_Config::get i16 item");
-    if (item >= configItems) return false;
+    if (item >= _items) return false;
     datum = _config[item].datum.i16;
     return true;
 }

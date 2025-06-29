@@ -4,7 +4,7 @@
 
 class StreamCmd {
    private:
-    static const uint8_t _sizeCmd = 64;
+    static const uint8_t _sizeCmd = mediumBufferSize;
 
    public:
     StreamCmd(void);
