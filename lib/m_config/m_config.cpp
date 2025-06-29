@@ -2,7 +2,11 @@
 
 #include <LittleFS.h>
 
+// class constant definitions
 const char M_Config::_defaultFilename[_filenameSize] = "/config.json";
+
+// iniitalize globals
+M_Config config;
 
 M_Config::M_Config(const char *filename) {
     Log.traceln("M_Config init");
@@ -79,6 +83,15 @@ bool M_Config::read(void) {
                     ret = false;
                 }
                 break;
+            case BOOL:
+                if (jDoc[_config[i].name].is<bool>())
+                    _config[i].datum.b = jDoc[_config[i].name];
+                else {
+                    Log.warning("Config read bad type not bool: %s",
+                                _config[i].name);
+                    ret = false;
+                }
+                break;
             default:
                 Log.errorln("Config read Unexpected type for %s: %d",
                             _config[i].name, _config[i].type);
@@ -103,6 +116,9 @@ bool M_Config::write(void) {
                 break;
             case I16:
                 jDoc[_config[i].name] = _config[i].datum.i16;
+                break;
+            case BOOL:
+                jDoc[_config[i].name] = _config[i].datum.b;
                 break;
             default:
                 Log.errorln("Config write unexpected type for %s: %d",
@@ -224,6 +240,13 @@ bool M_Config::get(uint8_t item, int16_t &datum) {
     return true;
 }
 
+bool M_Config::get(uint8_t item, bool &datum) {
+    // Log.traceln("M_Config::get i16 item");
+    if (item >= _items) return false;
+    datum = _config[item].datum.b;
+    return true;
+}
+
 bool M_Config::get(const char *name, const char *&datum) {
     uint8_t item;
     // Log.traceln("M_Config::get chars name");
@@ -244,6 +267,14 @@ bool M_Config::get(const char *name, int16_t &datum) {
 
     // Log.traceln("M_Config::get i16 name");
     item = find(name, I16);
+    return get(item, datum);
+}
+
+bool M_Config::get(const char *name, bool &datum) {
+    uint8_t item;
+
+    // Log.traceln("M_Config::get i16 name");
+    item = find(name, BOOL);
     return get(item, datum);
 }
 
@@ -279,4 +310,67 @@ bool M_Config::set(const char *name, const int16_t &datum) {
     if (item == _badItem) return false;
     _config[item].datum.i16 = datum;
     return true;
+}
+
+bool M_Config::set(const char *name, const bool &datum) {
+    uint8_t item;
+
+    Log.traceln("M_Config::set i16");
+    item = find(name, BOOL);
+    if (item == _badItem) return false;
+    _config[item].datum.b = datum;
+    return true;
+}
+
+bool cmdConfig(const char *cmd, uint8_t len) {
+    bool ret = true;
+
+    Log.traceln("cmdConfig");
+    if (len > 0) {
+        switch (cmd[0]) {
+            case 'l':
+                Log.noticeln("Running Cmd: C%s", cmd);
+                // cmdGetConfigNames();
+                break;
+            case 'g':
+                if (len < 3) {
+                    ret = false;
+                    Log.warning("Command not long enough: C%s", cmd);
+                } else {
+                    Log.noticeln("Running Cmd: C%s", cmd);
+                    // ret = cmdGetConfig(&cmd[2]);
+                }
+                break;
+            case 's':
+                if (len < 5) {
+                    ret = false;
+                    Log.warning("Command not long enough: C%s", cmd);
+                } else {
+                    Log.noticeln("Running Cmd: C%s", cmd);
+                    // auto value = splitString(&cmd[2]);
+                    // cmdSetConfig(&cmd[2], value);
+                }
+                break;
+            case 'W':
+                ret = config.write();
+                if (ret)
+                    Log.noticeln("Write succeeded");
+                else
+                    Log.errorln("Write failed");
+                break;
+            case 'R':
+                ret = config.read();
+                if (ret)
+                    Log.noticeln("Read succeeded");
+                else
+                    Log.errorln("Read failed");
+                break;
+            default:
+                Log.warningln("Unknown config cmd: C%s", cmd);
+        }
+    } else {
+        Log.errorln("No config command");
+    }
+    ret = false;
+    return ret;
 }

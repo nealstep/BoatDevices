@@ -9,6 +9,7 @@ class StreamCmd {
    public:
     StreamCmd(void);
     void setStream(Stream &stream);
+    bool isStream(void);
     bool loop(void);
     inline char *get(void) { return _cmd; }
 
@@ -17,3 +18,6 @@ class StreamCmd {
     uint8_t _cmd_ind;
     char _cmd[_sizeCmd];
 };
+
+// export globals
+extern StreamCmd streamCmd;

@@ -7,30 +7,31 @@
 #include "m_wifi.hpp"
 #include "secrets.hpp"
 
-// initialize library instances
-StreamCmd streamCmd;
-M_Config config;
-M_MQTT mqtt;
-M_WiFi wifi;
-LogPrint logPrint;
-
 // constants
 const uint8_t mqttCmdSize = mediumBufferSize;
 
 // global variables
-IPAddress localIP;
+
+// timing
 uint32_t currentMillis;
 uint32_t previousMillis;
 uint32_t seconds;
-bool ledStatus = false;
-bool reconnect = false;
-uint32_t mqttLastCheck = 0;
-bool mqttCmdRdy = false;
-char mqttCmd[mqttCmdSize];
 
-// task globals
+// task management
+uint32_t mqttLastCheck = 0;
 bool blinkDone = false;
 bool mqttDone = false;
+
+// flags
+bool useSerial;
+bool useMQTT;
+
+// led status
+bool ledStatus = false;
+
+// mqtt  cmd variables
+bool mqttCmdRdy = false;
+char mqttCmd[mqttCmdSize];
 
 // config data
 void configSetup(void) {
@@ -40,12 +41,16 @@ void configSetup(void) {
     config.add("wifi_passwd", config.CHARS, 32);
     config.add("mqtt_host", config.CHARS, 32);
     config.add("mqtt_port", config.U16);
+    config.add("use_serial", config.BOOL);
+    config.add("use_mqtt", config.BOOL);
     // set defaults, if desired
     Log.verboseln("Setting defaults");
     config.set("wifi_ssid", wifiSSID);
     config.set("wifi_passwd", wifiPasswd);
     config.set("mqtt_host", mqttHost);
     config.set("mqtt_port", mqttPort);
+    config.set("use_serial", true);
+    config.set("use_mqtt", true);
     // check we have created everythning
     uint8_t id = 0;
     const char *name;
@@ -58,26 +63,30 @@ void configSetup(void) {
 
 // setup
 void setup() {
-    Serial.begin(baud);
-    logPrint.setPrint(Serial);
+    // set up Log with null logger
     Log.begin(LOG_LEVEL_VERBOSE, &logPrint, true);
-    streamCmd.setStream(Serial);
+    // setup config
+    configSetup();
+    config.get("use_serial", useSerial);
+    config.get("use_mqtt", useMQTT);
+    if (useSerial) {
+        Serial.begin(baud);
+        logPrint.startPrint(Serial);
+        streamCmd.setStream(Serial);
+    }
     // settling time
     delay(longDelay);
     Log.traceln("Starting");
     // blink setup
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, ledStatus);
-    // setup config
-    configSetup();
     // setup wifi
     const char *ssid;
     const char *passwd;
     config.get("wifi_ssid", ssid);
     config.get("wifi_passwd", passwd);
     if (wifi.init(ssid, passwd)) {
-        localIP = WiFi.localIP();
-        Log.noticeln("WiFi connected IP: %p", localIP);
+        Log.noticeln("WiFi connected IP: %p", WiFi.localIP());
         // setup OTA
         ArduinoOTA.setPassword(otaPasswd);
         ArduinoOTA.begin();
@@ -88,7 +97,9 @@ void setup() {
         config.get("mqtt_port", port);
         if (mqtt.setup(host, port)) {
             if (mqtt.check()) {
-                logPrint.setMQTT(mqtt, mqtt.T_LOG);
+                if (useMQTT) {
+                    logPrint.startMQTT(mqtt, mqtt.T_LOG);
+                }
                 Log.noticeln("MQTT connnected");
             } else {
                 Log.fatalln("MQTT check failed");
@@ -122,9 +133,9 @@ bool cmdHandle(const char *cmd, bool useMQTT = false) {
     Log.traceln("cmdHandle cmd: %s", cmd);
     if (len > 0) {
         switch (cmd[0]) {
-            // case 'C':
-            //     ret = cmdConfig(&(cmd[1]), len - 1);
-            //     break;
+            case 'C':
+                ret = cmdConfig(&(cmd[1]), len - 1);
+                break;
             default:
                 Log.warningln("Unknown cmd: %s", cmd);
                 if (useMQTT) {

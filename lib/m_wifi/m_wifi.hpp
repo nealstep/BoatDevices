@@ -24,3 +24,7 @@ class M_WiFi {
    private:
     bool copyStrings(const char *wifiSSID, const char *wifiPasswd);
 };
+
+// export globals
+extern M_WiFi wifi;
+extern bool reconnect;

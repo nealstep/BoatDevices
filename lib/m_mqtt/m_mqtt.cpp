@@ -10,12 +10,15 @@
 #include <PubSubClient.h>
 
 // extrernals
-extern IPAddress localIP;
 void mqttCallback(char *topic, byte *payload, unsigned int length);
 
 // initialize library instances
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
+
+// initialize Globals
+M_MQTT mqtt;
+LogPrint logPrint;
 
 // constants
 const char *M_MQTT::_aliveTemplate = mqttAliveTemplate;
@@ -58,8 +61,7 @@ bool M_MQTT::check(void) {
         if (mqttClient.connect(_id, _topics[T_HEALTH], 0, false,
                                "Disconnected")) {
             char msg[_messageSize];
-            snprintf(msg, _messageSize, _aliveTemplate,
-                     localIP.toString().c_str());
+            snprintf(msg, _messageSize, _aliveTemplate, WiFi.localIP().toString().c_str());
             send(T_HEALTH, msg);
             mqttClient.subscribe(_topics[T_CMD]);
             ready = true;
@@ -101,15 +103,37 @@ void M_MQTT::sendf(TopicName topic, const char *format, ...) {
     send(topic, _reply);
 }
 
-void LogPrint::setPrint(Print &print) {
+void LogPrint::startPrint(Print &print) {
     _print = &print;
     _usePrint = true;
 }
 
-void LogPrint::setMQTT(M_MQTT &mqtt, M_MQTT::TopicName topic) {
+bool LogPrint::startPrint(void) {
+    if (_print) {
+        _usePrint = true;
+    } else {
+        Log.error("Cannot start, print mechanism not set");
+        return false;
+    }
+    return true;
+}
+
+
+void LogPrint::startMQTT(M_MQTT &mqtt, M_MQTT::TopicName topic) {
     _mqtt = &mqtt;
     _topic = topic;
     _useMQTT = true;
+}
+
+
+bool LogPrint::startMQTT(void) {
+    if (_mqtt && _topic) {
+        _useMQTT = true;
+    } else {
+        Log.error("Cannot start, mqtt mechanism not set");
+        return false;
+    }
+    return true;
 }
 
 size_t LogPrint::write(uint8_t byte) {

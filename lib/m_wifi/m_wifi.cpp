@@ -1,9 +1,12 @@
 #include "m_wifi.hpp"
 
-extern bool reconnect;
-
+// static variables outside of class so callbacks can get to them
 static char _ssid[M_WiFi::stringSize];
 static char _passwd[M_WiFi::stringSize];
+
+// iniitialize globals
+M_WiFi wifi;
+bool reconnect;
 
 bool M_WiFi::copyStrings(const char *wifiSSID, const char *wifiPasswd) {
     if (strlcpy(_ssid, wifiSSID, stringSize) >= stringSize) {

@@ -6,7 +6,7 @@
 
 class M_Config {
    public:
-    enum DataTypeCodes { ANY, CHARS, U16, I16 };
+    enum DataTypeCodes { ANY, CHARS, U16, I16, BOOL };
 
    private:
     static const uint8_t _badItem = 255;
@@ -18,6 +18,7 @@ class M_Config {
         char *chars;
         uint16_t u16;
         int16_t i16;
+        bool b;
     };
     struct DataPair {
         char name[_nameSize];
@@ -42,14 +43,17 @@ class M_Config {
     bool get(uint8_t id, const char *&datum);
     bool get(uint8_t id, uint16_t &datum);
     bool get(uint8_t id, int16_t &datum);
+    bool get(uint8_t id, bool &datum);
 
     bool get(const char *name, const char *&datum);
     bool get(const char *name, uint16_t &datum);
     bool get(const char *name, int16_t &datum);
+    bool get(const char *name, bool &datum);
 
     bool set(const char *name, const char *datum);
     bool set(const char *name, const uint16_t &datum);
     bool set(const char *name, const int16_t &datum);
+    bool set(const char *name, const bool &datum);
 
    private:
     char _filename[_filenameSize];
@@ -57,3 +61,9 @@ class M_Config {
     uint8_t _configCount = 0;
     DeserializationError _dError;
 };
+
+// export globals
+extern M_Config config;
+
+// command routines
+bool cmdConfig(const char *cmd, uint8_t len);

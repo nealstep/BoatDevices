@@ -1,6 +1,5 @@
 # Todo
 
-* disable serial in LogPrint
-* use serial and use mysql to config
-* read config on startup if exists
+* use the config use serial and use mysql to change behaviour
 * implement cmd for updating config
+* read config on startup if exists

@@ -1,5 +1,8 @@
 #include "m_stream_cmd.hpp"
 
+// initialize globals
+StreamCmd streamCmd;
+
 StreamCmd::StreamCmd(void) {
     Log.traceln("StreamCmd Init");
     _stream = nullptr;
@@ -12,12 +15,20 @@ void StreamCmd::setStream(Stream& stream) {
     _stream = &stream;
 }
 
+bool StreamCmd::isStream(void) {
+    if (!_stream) {
+        Log.error("Stream not set");
+        return false;
+    }
+    return true;
+}
+
 bool StreamCmd::loop(void) {
     bool r;
     char c;
 
     if (!_stream) {
-        Log.error("Stream not set");
+        // fail silently
         return false;
     }
     r = false;
