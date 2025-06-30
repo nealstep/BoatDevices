@@ -66,4 +66,4 @@ class M_Config {
 extern M_Config config;
 
 // command routines
-bool cmdConfig(const char *cmd, uint8_t len);
+bool cmdConfig(const char *cmd, uint8_t len, bool replyMQTT);

@@ -6,7 +6,6 @@ class M_MQTT {
     static const uint16_t _maxAttempts = maxAttempts;
     static const uint8_t _idSize = tinyBufferSize;
     static const uint8_t _topicSize = mediumBufferSize;
-    static const uint8_t _replySize = bigBufferSize;
     static const uint8_t _messageSize = mediumBufferSize;
    public:
     bool ready = false;
@@ -16,12 +15,10 @@ class M_MQTT {
     bool check(void);
     bool loop(void);
     void send(TopicName topic, const char *msg);
-    void sendf(TopicName topic, const char *format, ...);
 
    private:
     char _id[_idSize];
     char _topics[T_COUNT][_topicSize];
-    char _reply[_replySize];
 
     bool makeTopic(char *topic, const char *prefix);
 };

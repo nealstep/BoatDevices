@@ -2,6 +2,8 @@
 
 #include <LittleFS.h>
 
+extern void cmdReply(bool replyMQTT, const char *format, ...);
+
 // class constant definitions
 const char M_Config::_defaultFilename[_filenameSize] = "/config.json";
 
@@ -322,20 +324,28 @@ bool M_Config::set(const char *name, const bool &datum) {
     return true;
 }
 
-bool cmdConfig(const char *cmd, uint8_t len) {
+bool cmdConfig(const char *cmd, uint8_t len, bool replyMQTT) {
     bool ret = true;
+    uint8_t i = 0;
 
     Log.traceln("cmdConfig");
     if (len > 0) {
         switch (cmd[0]) {
             case 'l':
                 Log.noticeln("Running Cmd: C%s", cmd);
-                // cmdGetConfigNames();
+                const char *name;
+                while (true) {
+                    name = config.getName(i);
+                    if (!name) break;
+                    cmdReply(replyMQTT, "Name %d: %s", i, name);
+                }
+                cmdReply(replyMQTT, "Name list done");
                 break;
             case 'g':
                 if (len < 3) {
                     ret = false;
                     Log.warning("Command not long enough: C%s", cmd);
+                    cmdReply(replyMQTT, "Command not long enough");
                 } else {
                     Log.noticeln("Running Cmd: C%s", cmd);
                     // ret = cmdGetConfig(&cmd[2]);
@@ -345,6 +355,7 @@ bool cmdConfig(const char *cmd, uint8_t len) {
                 if (len < 5) {
                     ret = false;
                     Log.warning("Command not long enough: C%s", cmd);
+                    cmdReply(replyMQTT, "Command not long enough");
                 } else {
                     Log.noticeln("Running Cmd: C%s", cmd);
                     // auto value = splitString(&cmd[2]);
@@ -353,23 +364,31 @@ bool cmdConfig(const char *cmd, uint8_t len) {
                 break;
             case 'W':
                 ret = config.write();
-                if (ret)
+                if (ret) {
                     Log.noticeln("Write succeeded");
-                else
+                    cmdReply(replyMQTT, "Write succeeded");
+                } else {
                     Log.errorln("Write failed");
+                    cmdReply(replyMQTT, "Write failed");
+                }
                 break;
             case 'R':
                 ret = config.read();
-                if (ret)
+                if (ret) {
                     Log.noticeln("Read succeeded");
-                else
+                    cmdReply(replyMQTT, "Read succeeded");
+                } else {
                     Log.errorln("Read failed");
+                    cmdReply(replyMQTT, "Read failed");
+                }
                 break;
             default:
                 Log.warningln("Unknown config cmd: C%s", cmd);
+                cmdReply(replyMQTT, "Unknown config cmd: C%s", cmd);
         }
     } else {
         Log.errorln("No config command");
+        cmdReply(replyMQTT, "No config command");
     }
     ret = false;
     return ret;

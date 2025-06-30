@@ -5,3 +5,6 @@
 
 #include "constants.hpp"
 #include "texts.hpp"
+
+//defaults
+constexpr const char *default_log_level = "verbose";

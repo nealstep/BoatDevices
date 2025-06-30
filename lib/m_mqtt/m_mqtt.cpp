@@ -95,14 +95,6 @@ void M_MQTT::send(TopicName topic, const char *msg) {
     }
 }
 
-void M_MQTT::sendf(TopicName topic, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    vsnprintf(_reply, _replySize, format, args);
-    va_end(args);
-    send(topic, _reply);
-}
-
 void LogPrint::startPrint(Print &print) {
     _print = &print;
     _usePrint = true;
