@@ -1,37 +1,18 @@
 #include <ArduinoOTA.h>
+#include <TaskScheduler.h>
 
 #include "all.hpp"
 #include "m_config.hpp"
-#include "m_mqtt.hpp"
 #include "m_stream_cmd.hpp"
-#include "m_wifi.hpp"
+#include "m_pmesh.hpp"
 #include "secrets.hpp"
-
-// constants
-const uint8_t mqttCmdSize = mediumBufferSize;
-
-// global variables
-
-// timing
-uint32_t currentMillis;
-uint32_t previousMillis;
-uint32_t seconds;
-
-// task management
-uint32_t mqttLastCheck = 0;
-bool blinkDone = false;
-bool mqttDone = false;
 
 // flags
 bool useSerial;
-bool useMQTT;
+bool useMesh;
 
 // led status
 bool ledStatus = false;
-
-// mqtt  cmd variables
-bool mqttCmdRdy = false;
-char mqttCmd[mqttCmdSize];
 
 // config data
 void configSetup(void) {
@@ -39,20 +20,16 @@ void configSetup(void) {
     Log.verboseln(msg_creating_fields);
     config.add("wifi_ssid", config.CHARS, M_WiFi::stringSize);
     config.add("wifi_passwd", config.CHARS, M_WiFi::stringSize);
-    config.add("mqtt_host", config.CHARS, mediumBufferSize);
-    config.add("mqtt_port", config.U16);
     config.add("use_serial", config.BOOL);
-    config.add("use_mqtt", config.BOOL);
+    config.add("use_mesh", config.BOOL);
     config.add("log_level", config.CHARS, tinyBufferSize);
 
     // set defaults
     Log.verboseln(msg_setting_defaults);
     config.set("wifi_ssid", wifiSSID);
     config.set("wifi_passwd", wifiPasswd);
-    config.set("mqtt_host", mqttHost);
-    config.set("mqtt_port", mqttPort);
     config.set("use_serial", true);
-    config.set("use_mqtt", true);
+    config.set("use_mesh", true);
     config.set("log_level", default_log_level);
 
     // read config
